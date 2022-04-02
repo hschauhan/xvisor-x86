@@ -7,6 +7,11 @@ title: Xvisor-X86
 #### Inside KVM
 The instructions to run Xvisor inside can be found [here](running_on_nested_kvm.md).
 
+#### Disassembling 16-bit SeaBIOS Code
+```
+objdump -D -mi386 -Maddr16,data16 out/rom16.o | less
+```
+
 You can use the [editor on GitHub](https://github.com/hschauhan/xvisor-x86/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
 
 Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
