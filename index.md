@@ -1,4 +1,7 @@
-## Welcome to GitHub Pages
+---
+title: Xvisor-X86
+---
+## Welcome to Xvisor-X86
 
 You can use the [editor on GitHub](https://github.com/hschauhan/xvisor-x86/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
 
