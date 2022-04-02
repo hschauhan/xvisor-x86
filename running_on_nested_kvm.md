@@ -1,4 +1,4 @@
-## Running Xvisor on nesting KVM
+## Running Xvisor inside KVM
 
 Qemu/KVM don't have emulation of VT-x instructions. So, Xvisor can only be run on machines with nested KVM enabled.
 
