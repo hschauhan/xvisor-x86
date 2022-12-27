@@ -1,7 +1,7 @@
 ---
-title: Xvisor-X86
+title: xvisor-x86
 ---
-## Welcome to Xvisor-X86
+## Welcome to xvisor-x86
 
 ### Running Xvisor
 #### Inside KVM
