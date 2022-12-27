@@ -3,9 +3,145 @@ title: xvisor-x86
 ---
 ## Welcome to xvisor-x86
 
-### Running Xvisor
-#### Inside KVM
-The instructions to run Xvisor inside can be found [here](running_on_nested_kvm.md).
+### Booting x86_64 images on Qemu
+
+
+####  What is needed?
+It is required that you have a machine with grub2. Any
+latest Linux distro should have it. Compiling and installing
+grub2 is out of scope for this document. It is also
+required that you are running a 64-bit Linux because
+cross compiling for 64-bit on 32-bit machines is not
+discussed here.
+
+#### Steps to build a bootable image of Xvisor
+1. Clone xvisor-x86_64 repo
+```
+      # git clone git://github.com/hschauhan/xvisor-x86.git
+```
+2. Build Xvisor with following command:
+```
+      # make ARCH=x86 x86_64_generic-defconfig
+      # make
+```
+3. Create a directory xvisor-iso _somewhere_.
+```
+      # mkdir -p xvisor-iso/boot/grub
+```
+4. Copy the xvisor image in the ISO directory:
+```
+      # cp XVISOR_BASE/build/vmm.bin xvisor-iso/boot/
+```
+(NOTE: Here XVISOR_BASE is base directory where you pulled
+       the xvisor tree.)
+
+5. Create a grub configuration file under ISO directory
+```
+      # <your editor> xvisor-iso/boot/grub/grub.cfg
+```
+         CUT AND PASTE FOLLOWING IN IT
+```
+             set timeout=15
+             set default=0
+
+             menuentry "Xvisor x86_64" {
+                  multiboot /boot/vmm.bin earlyprint=serial@0 console=serial@0
+                  boot
+             }
+```
+Please copy paste above. A slight mistake won't boot your system.
+
+6. Create a ISO to boot
+```
+      # grub-mkrescue -o bootable.iso xvisor-iso/
+```
+
+7. Boot the image (without any guest)
+```
+# qemu-system-x86_64 -cpu qemu64,+svm,vendor=AuthenticAMD -cdrom bootable.iso -hda xvisor-x86.disk -m 1024M -boot d -s -serial stdio
+```
+
+#### Preparing to Boot Guest:
+To run guest, we will need two things. One: a guest image (seabios right now) and two: A disk image which qemu can export as IDE.
+
+1. Creating a guest binary:
+...      i.   We will use seabios as our guest binary to boot. The seabios which is being tested with Xvisor can be clone by:
+```
+           # git clone https://github.com/hschauhan/xvisor-seabios.git
+```
+...      ii.  Build by command:
+```
+           # cp config-xvisor .config; make
+```
+...           (NOTE: This will create bios.bin in "out" directory.)
+...           (NOTE: bios.bin is our guest binary.)
+
+2. Creating a disk for qemu
+...      i.   Create a raw QEMU disk image:
+```
+qemu-img create -f raw xvisor-hd.disk 32M
+```
+...      ii.  Find the loopback device for the disk file by running command:
+```
+               losetup --partscan --find --show xvisor-hd.disk
+```
+...      iii. Make the filesystem on the disk:
+```
+                sudo mkfs.vfat /dev/loop26p1
+```
+...      iv.  Mount the new partition in disk in host Linux (where you are compiling xvisor and seabios)
+```
+           # mkdir xmount
+	       # sudo mount /dev/loop26p1 ./xmount/
+```
+NOTE: the loop device can different. Check the output of losetup in step ii.
+
+...      v.   Copy seabios binary in it.
+```
+           # cp xvisor-seabios/out/bios.bin xmount/
+           # sudo umount xmount
+```
+
+3. Launch Qemu with this new harddrive:
+```
+      qemu-system-x86_64 -cpu qemu64,+svm,vendor=AuthenticAMD -cdrom bootable.iso -hda xvisor-hd.disk -m 1024M -boot d -s -serial stdio
+```
+
+	OR ON INTEL
+```
+      qemu-system-x86_64 -cpu SandyBridge,hv_relaxed,hv_spinlocks=0x1fff,hv_vapic,hv_time,+vmx -enable-kvm -cdrom bootable.iso -hda xvisor-hd.disk -m 1024m -boot d -serial stdio -vnc :2
+```
+
+...      To enable Qemu monitor on telnet following can be appended to above command:
+```
+              -monitor telnet:127.0.0.1:55555,server,nowait
+```
+
+4. Load guest binary:
+      When Xvisor boots, we will need to load guest binary in memory:
+      i.  First check if the correct block device and its partition are seen by Xvisor. You should see something like this:
+          XVisor# blockdev list
+          --------------------------------------------------------------------------------
+           Name             Parent           Start LBA        Blk Sz      Blk Cnt
+          --------------------------------------------------------------------------------
+           hda0             ---              0                512         9840176
+           hda0p0           hda0             2048             512         9840176
+          --------------------------------------------------------------------------------
+      ii.  Mount the partition hda0p0 in xvisor:
+           XVisor# vfs mount hda0p0 /
+      iii. Copy guest binary in memory:
+           XVisor# vfs host_load 0xc0e0000 /bios.bin
+      iv.  Kick the guest:
+           XVisor# guest kick guest0
+      v.   Bind guest serial:
+           XVisor#vserial bind guest0/uart0
+      vi.  If everything went fine, you will see something like this:
+           XVisor# vserial bind guest0/uart0
+           [guest0/uart0] Changing serial settings was 0/0 now 3/0
+           [guest0/uart0] Start Seabios (version -20140215_004145-hchauhan-vmplayer)
+           [guest0/uart0] CPUID Signature "XvisorXvisor" at 80000000
+           [guest0/uart0] Booting on CPU: Xvisor Virtual CPU version 0.1
+           [guest0/uart0]
 
 #### Disassembling 16-bit SeaBIOS Code
 ```
